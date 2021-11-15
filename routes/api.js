@@ -79,16 +79,16 @@ module.exports = function (app) {
           let likes2 = docs[1].likes || 0;
           let relLikes = likes2 - likes1;
 
-          res.json(docs.map(doc => {
-            relLikes = -relLikes;
-            return ({
-              stockData: {
+          res.json({
+            stockData: docs.map(doc => {
+              relLikes = -relLikes;
+              return {
                 stock: doc.stock,
                 price: doc.price,
                 rel_likes: relLikes
               }
             })
-          }));
+          })
 
         } else {
           res.json({
