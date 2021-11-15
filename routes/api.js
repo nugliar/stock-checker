@@ -77,7 +77,7 @@ module.exports = function (app) {
         if (docs.length > 1) {
           let likes1 = docs[0].likes || 0;
           let likes2 = docs[1].likes || 0;
-          let relLikes = likes1 - likes2;
+          let relLikes = likes2 - likes1;
 
           res.json(docs.map(doc => {
             relLikes = -relLikes;
