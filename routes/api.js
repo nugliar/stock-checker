@@ -31,9 +31,6 @@ module.exports = function (app) {
       } else {
         reqStocks = reqStocks.slice(0, 2);
       }
-      if (reqLike) {
-        reqIpHash = bcrypt.hashSync(reqIp, 10);
-      }
 
       Promise.all(reqStocks.map(stock => {
 
@@ -46,54 +43,60 @@ module.exports = function (app) {
 
         }).then(doc => {
 
-          const ipHashes = doc ? doc.ips : [];
-          const update = {
-            stock: stock,
-            ips: reqLike ? ipHashes.concat(reqIpHash) : ipHashes
-          };
+          let ipHashes = doc ? doc.ips : [];
+
+          if (reqLike && !ipHashes.some(hash => bcrypt.compare(reqIp, hash))) {
+            reqIpHash = bcrypt.hashSync(reqIp, 5);
+            ipHashes.push(reqIpHash);
+          }
 
           return new Promise((resolve, reject) => {
             let query = StockModel.findOneAndUpdate(
               { stock: stock },
-              update,
-              { upsert: true, returnDocument: 'after' }
+              { stock: stock, ips: ipHashes },
+              { upsert: true }
             );
             query.exec((err, doc) => {
-              if (err) { reject(err) }
-              doc.price = stockData.latestPrice;
-              resolve(doc);
+              if (err) {
+                reject(err);
+              }
+              resolve({
+                stock: doc ? doc.stock : stock,
+                price: stockData.latestPrice,
+                likes: doc ? doc.ips.length : 0
+              });
             });
           });
+        }).catch(err => {
+          console.log(err.message.text);
+          resolve({});
         })
 
       })).then(docs => {
 
         if (docs.length > 1) {
-          let t = docs[0].likes;
-          docs[0].likes -= docs[1].likes;
-          docs[1].likes -= t;
+          let likes1 = docs[0].likes || 0;
+          let likes2 = docs[1].likes || 0;
+          let relLikes = likes1 - likes2;
 
-          res.json(docs.map(doc => ({
-            stockData: {
-              stock: doc.stock,
-              price: doc.price,
-              likes: doc.ips ? doc.ips.length : 0
-            }})
-          ));
+          res.json(docs.map(doc => {
+            relLikes = -relLikes;
+            return ({
+              stockData: {
+                stock: doc.stock,
+                price: doc.price,
+                rel_likes: relLikes
+              }
+            })
+          }));
 
         } else {
           res.json({
-            stockData: {
-              stock: docs[0].stock,
-              price: docs[0].latestPrice,
-              likes: docs[0].ips ? docs[0].ips.length : 0
-            }
+            stockData: docs[0]
           })
         }
 
       }).catch(err => {
-
-        console.error(err.message);
         return next(err);
       });
     })
