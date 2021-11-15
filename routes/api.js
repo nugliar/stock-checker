@@ -8,7 +8,7 @@ mongoose.connect(process.env.MONGO_URI, {useNewUrlParser: true, useUnifiedTopolo
 
 const stockSchema = mongoose.Schema({
   stock: String,
-  ips: [{type: String}]
+  ips: [{type: String}],
 })
 
 const StockModel = mongoose.model('Ip', stockSchema);
@@ -62,7 +62,7 @@ module.exports = function (app) {
               }
               resolve({
                 stock: doc ? doc.stock : stock,
-                price: stockData.latestPrice,
+                price: stockData.latestPrice || 0,
                 likes: doc ? doc.ips.length : 0
               });
             });
